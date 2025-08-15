@@ -1,0 +1,123 @@
+---
+title: "STA3007_mid_codes"
+author: "Yuzhou Peng"
+date: "2025-03-22"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(survival)
+library(dplyr)
+library(survminer)
+```
+
+# Problem 1
+```{r}
+grades <- read.csv("C:\\Users\\Penguin\\Desktop\\STA3007\\grades.csv")
+```
+
+## (1)
+```{r}
+#Histogram
+hist(grades$exam1)
+hist(grades$exam2)
+
+#Scatter plots
+plot(grades$exam1, grades$exam2)
+
+#Box plots
+plot(as.factor(grades$Year), grades$exam1, ylab = "Exam 1")
+plot(as.factor(grades$Year), grades$exam2, ylab = "Exam 2")
+
+#Q-Q plot
+qqnorm(grades$exam1, main='Q-Q plot of Exam 1')
+qqline(grades$exam1)
+
+qqnorm(grades$exam2, main='Q-Q plot of Exam 2')
+qqline(grades$exam2)
+```
+
+## (2)
+```{r}
+wilcox.test(grades$exam1, grades$exam2)
+```
+
+## (3)
+```{r}
+exam2_grades_y3 <- grades$exam2[seq(1,39)]
+exam2_grades_y2 <- grades$exam2[seq(40,158)]
+
+#K-S test
+ks.test ( exam2_grades_y2 , exam2_grades_y3)
+
+
+```
+
+## (4)
+```{r}
+cor.test(grades$exam1, grades$exam2, method = "kendall")
+
+cor.test(grades$exam1, grades$exam2, method = "spearman")
+
+```
+
+#Problem 2
+```{r}
+grades_censor <- read.csv("C:\\Users\\Penguin\\Desktop\\STA3007\\grades-censor.csv")
+```
+
+## (1)
+```{r}
+# Fit survival curves
+fit_exam1 <- survfit(Surv(
+  grades_censor$exam1obs, grades_censor$delta1) ~ 1)
+
+fit_exam2 <- survfit(Surv(
+  grades_censor$exam2obs, grades_censor$delta2) ~ 1)
+
+formulas <- list(
+KM1 = Surv(grades_censor$exam1obs, grades_censor$delta1)~1, 
+KM2 = Surv(grades_censor$exam2obs, grades_censor$delta2)~1 )
+
+fit <- surv_fit(formulas, data=grades_censor)
+ggsurvplot_combine(fit, data= grades_censor)
+
+fit_exam2_year <- survfit(Surv(
+  exam2obs,delta2) ~ Year, data = grades_censor)
+
+ggsurvplot(fit = fit_exam2_year,  data = grades_censor)
+```
+
+## (2)
+```{r}
+exam2_censor_y3 <- grades_censor$exam2obs[seq(1,39)]
+exam2_censor_y2 <- grades_censor$exam2obs[seq(40, 158)]
+#K-S test
+ks.test ( exam2_censor_y3 , exam2_censor_y2)
+
+#log-rank test
+surv_obj <- Surv(time = grades_censor$exam2obs, event = grades_censor$delta2)
+survdiff(surv_obj ~ grades_censor$Year)
+```
+
+## (3)
+```{r}
+fit_coxph_1 <- coxph(Surv(exam1obs, delta1) ~ Year,data=grades_censor)
+
+summary(fit_coxph_1)
+
+fit_coxph_2 <- coxph(Surv(exam2obs, delta2) ~ Year,data=grades_censor)
+
+summary(fit_coxph_2)
+
+
+```
+
+## (4)
+```{r}
+grades_combined <- data.frame(grades_censor, grades)
+```

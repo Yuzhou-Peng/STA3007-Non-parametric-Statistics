@@ -1,0 +1,78 @@
+---
+title: "STA3007_hw11"
+author: "Yuzhou Peng"
+date: "2025-04-27"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#squared-exponential (RBF) kernel
+rbf_kernel <- function(x, y, lengthscale = 1) {
+  # computes K_{ij} = exp(-1/(2ℓ^2) * (x_i - y_j)^2)
+  d2 <- outer(x, y, FUN = function(a, b) (a - b)^2)
+  exp(-0.5 / lengthscale^2 * d2)
+}
+
+set.seed(427)
+
+# 2. Generate training inputs X and sample f ~ N(0, K(X,X))
+n_train <- 100
+X <- sort(runif(n_train, -5, 5))
+K_XX <- rbf_kernel(X, X, lengthscale = 1)
+# add tiny jitter for numerical stability
+jitter <- 1e-6
+K_XX_jitter <- K_XX + diag(jitter, n_train)
+
+# draw a random function f at X
+f_train <- as.vector(t(chol(K_XX_jitter)) %*% rnorm(n_train))
+
+# 3. Choose test inputs Xstar
+n_test <- 50
+Xstar <- seq(-10, 10, length.out = n_test)
+
+# 4. Compute posterior mean and covariance
+K_Xstar_X     <- rbf_kernel(Xstar, X, lengthscale = 1)    # K(X*, X)
+K_Xstar_Xstar <- rbf_kernel(Xstar, Xstar, lengthscale = 1) # K(X*, X*)
+
+# Precompute inverse
+K_inv <- solve(K_XX_jitter)
+
+# posterior mean μ⋆ = K(X*, X) %*% K(X,X)^(-1) %*% f
+mu_star <- K_Xstar_X %*% (K_inv %*% f_train)
+
+# posterior covariance Σ⋆ = K(X*,X*) - K(X*,X) K(X,X)^(-1) K(X,X*)
+cov_star <- K_Xstar_Xstar - K_Xstar_X %*% K_inv %*% t(K_Xstar_X)
+
+# 5. Draw one posterior sample
+f_star_draw <- as.vector(mu_star + t(chol(cov_star + diag(1e-8, n_test))) %*% rnorm(n_test))
+
+# Plot prior sample, training data, and posterior sample
+par(mfrow = c(1,2), mar = c(4,4,2,1))
+# Prior draw (just f_train over X)
+plot(X, f_train, type = "l", lwd = 2, col = "steelblue",
+     main = "Prior draw f ~ N(0, K(X,X))",
+     xlab = "X", ylab = "f(X)")
+points(X, f_train, pch = 19, col = "steelblue")
+
+# Posterior
+plot(Xstar, mu_star, type = "l", lwd = 2, col = "black",
+     ylim = range(c(mu_star + 2*sqrt(diag(cov_star)),
+                    mu_star - 2*sqrt(diag(cov_star)),
+                    f_star_draw)),
+     main = "GP Posterior at X*",
+     xlab = "X*", ylab = "f*(X*)")
+# 95% credible envelope
+lines(Xstar, mu_star + 2*sqrt(diag(cov_star)), lty = 2)
+lines(Xstar, mu_star - 2*sqrt(diag(cov_star)), lty = 2)
+# posterior sample
+lines(Xstar, f_star_draw, col = "firebrick", lwd = 2)
+points(X, f_train, pch = 19)  # show training points
+legend("topright", legend = c("μ⋆", "±2σ⋆", "one draw"),
+       col = c("black", "black", "firebrick"),
+       lty = c(1, 2, 1), lwd = c(2,1,2), bty = "n")
+
+```

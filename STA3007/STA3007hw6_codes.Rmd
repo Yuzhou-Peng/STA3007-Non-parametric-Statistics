@@ -1,0 +1,88 @@
+---
+title: "Untitled"
+author: "Yuzhou Peng"
+date: "2025-03-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(survival)
+library(coin)
+library(survminer)
+```
+
+#Q44
+```{r}
+
+# Create survival data based on the table
+length_obs <- c(6, 16, 2, 1, 1, 4, 16, 3, 16, 8, 16, 2, 4, 16, 5, 1, 10, 2, 2, 10, 16, 1, 16, 15)
+status <- c(1, 0, 1, 1, 1, 0, 0, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0, 0)  # 1 = dead (D), 0 = alive (A)
+treatment_44 <- factor(c("D", "P", "P", "D", "D", "P", "D", "D", "P", "D", "P", "P", 
+                  "D", "P", "P", "D", "D", "P", "P", "D", "P", "D", "P", "D"))  # Treatment groups
+
+surv_data <- data.frame(length_obs, status, treatment_44)
+
+# Create a survival object
+surv_obj_44 <- Surv(length_obs, status)
+
+# Perform the log-rank test
+log_rank_test_44 <- survdiff(surv_obj_44 ~ treatment_44)
+
+# Print the results
+print(log_rank_test_44)
+
+#Visualization
+
+# Fit survival curves
+fit <- survfit(Surv(length_obs, status) ~ treatment_44, data = surv_data)
+
+# Plot the survival curves
+ggsurvplot(fit, data = surv_data, conf.int = TRUE, pval = TRUE, 
+           risk.table = TRUE, legend.labs = c("Drug", "Placebo"),
+           title = "Kaplan-Meier Survival Curves", 
+           xlab = "Time (weeks)", ylab = "Survival Probability")
+
+
+```
+
+#Q46
+```{r}
+gehan_test <- survdiff(surv_obj_44 ~ treatment_44, rho = 1)
+
+print(gehan_test)
+```
+
+#Q47
+```{r}
+
+surv_data <- data.frame(length_obs, status, treatment_44)
+
+# Perform Tarone-Ware test using logrank_test() with Tarone-Ware weights
+tarone_ware_test <- logrank_test(Surv(length_obs, status) ~ treatment_44, data = surv_data, distribution = "exact", type = "Tarone-Ware")
+
+# Print the results
+print(tarone_ware_test)
+
+```
+
+#Q48
+```{r}
+# Load necessary library
+library(survival)
+
+# Read the extracted survival data
+data <- read.csv("survival_data.csv")
+
+# Perform log-rank test
+surv_obj <- Surv(time = data$Time, event = data$Status)
+logrank_test <- survdiff(surv_obj ~ data$Group)
+
+# Print results
+print(logrank_test)
+
+
+```

@@ -1,0 +1,148 @@
+---
+title: "STA3007_hw8"
+author: "Yuzhou Peng"
+date: "2025-04-09"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(dplyr)
+library(locfit)
+library(splines)
+library(MASS)
+library(KernSmooth)
+library(np)
+```
+
+#Q3
+```{r}
+glass = read.table("C:\\Users\\Penguin\\Desktop\\STA3007\\Forensic_work_data.txt")
+
+RI <- glass$RI
+Al <- glass$Al
+
+
+```
+
+##Regresogram
+```{r}
+regressogram <- function(n_bins, Y, X) {
+  X_bin <- cut(X, breaks = n_bins, include.lowest = TRUE)
+  df <- data.frame(X = X, X_bin = X_bin, Y = Y) %>% na.omit()
+  res <- df %>%
+    group_by(X_bin) %>%
+    summarize(
+      mean_Y = mean(Y),
+      num_string = gsub("\\[|\\]|\\(|\\)", "", as.character(X_bin)), .groups = "drop"
+     ) %>%
+    
+    mutate(
+      X_left = as.numeric(sapply(strsplit(num_string, ","), `[`, 1)),
+      X_right = as.numeric(sapply(strsplit(num_string, ","), `[`, 2)),
+      X_mid = (X_left + X_right) / 2
+)
+return(list(res = res, data = df))
+}
+
+regreso_glass <- regressogram(20, RI, Al)
+```
+
+```{r}
+plot(Al, RI, col = "black", pch = 20, cex = 1,
+  xlab = "Al", ylab = "RI",
+  main = "Regressogram")
+segments(x0 = regreso_glass$res$X_left, x1 = regreso_glass$res$X_right,
+        y0 = regreso_glass$res$mean_Y, y1 = regreso_glass$res$mean_Y,
+        col = "red", lwd = 3)
+points(regreso_glass$res$X_mid, regreso_glass$res$mean_Y, pch = 19, col = "red")
+```
+
+## Kernel
+```{r}
+bw <- npregbw(formula = RI ~ Al, regtype = "lc", bwmethod = "cv.ls")
+
+fit_kernel <- npreg(bws = bw)
+residuals_kernel <- RI - fitted(fit_kernel)
+sigma2_kernel <- mean(residuals_kernel^2)
+print(paste0("The variance of kernel:", sigma2_kernel))
+
+se_kernel <- sqrt(sigma2_kernel)
+upper_kernel <- fitted(fit_kernel) + 1.96*se_kernel
+lower_kernel <- fitted(fit_kernel) - 1.96*se_kernel
+plot(Al, RI, col = "black", pch = 20, cex = 1, main = "kernel")
+lines(Al[order(Al)], fitted(fit_kernel)[order(Al)], col = "blue", lwd = 2)
+lines(Al[order(Al)], upper_kernel[order(Al)], col = "red", lty = 2)
+lines(Al[order(Al)], lower_kernel[order(Al)], col = "red", lty = 2)
+```
+
+## Local Regression
+```{r}
+fit_locfit <- locfit(RI ~ lp(Al, deg = 1))
+residuals_locfit <- RI - fitted(fit_locfit)
+sigma2_locfit <- mean(residuals_locfit^2)
+print(paste0("The variance of local linear regression:", sigma2_locfit))
+
+se_locfit <- sqrt(sigma2_locfit)
+upper_locfit <- fitted(fit_locfit) + 1.96*se_locfit
+lower_locfit <- fitted(fit_locfit) - 1.96*se_locfit
+plot(Al, RI, col = "black", pch = 20, cex = 1, main = "Local Regression")
+lines(Al[order(Al)], fitted(fit_locfit)[order(Al)], col = "blue", lwd = 2)
+lines(Al[order(Al)], upper_locfit[order(Al)], col = "red", lty = 2)
+lines(Al[order(Al)], lower_locfit[order(Al)], col = "red", lty = 2)
+```
+```{r}
+cv_errors <- sapply(3:15, function(df) {
+model <- smooth.spline(Al, RI, df = df)
+mean((predict(model, Al)$y - RI)^2)
+})
+best_df <- which.min(cv_errors)
+fit_spline <- smooth.spline(Al, RI, df = best_df)
+r_hat_spline <- predict(fit_spline, Al)$y
+residuals_spline <- RI - r_hat_spline
+sigma2_spline <- mean(residuals_spline^2)
+print(paste0("The variance of spline:", sigma2_spline))
+
+se_spline <- sqrt(sigma2_spline)
+upper_spline <- fitted(fit_spline) + 1.96*se_spline
+lower_spline <- fitted(fit_spline) - 1.96*se_spline
+plot(Al, RI, col = "black", pch = 20, cex = 1, main = "Spline")
+lines(Al[order(Al)], fitted(fit_spline)[order(Al)], col = "blue", lwd = 2)
+lines(Al[order(Al)], upper_spline[order(Al)], col = "red", lty = 2)
+lines(Al[order(Al)], lower_spline[order(Al)], col = "red", lty = 2)
+```
+
+#Q4
+```{r}
+motor <- read.table("C:\\Users\\Penguin\\Desktop\\STA3007\\motor-dat")
+
+colnames(motor) <- c("time", "accel",	"strata", "v")
+motor <- motor[-1,]
+
+X = motor$time
+Y = motor$accel
+
+X <- as.numeric(X)
+Y <- as.numeric(Y)
+fit_locfit <- locfit(Y ~ lp(X, deg = 1))
+residuals_locfit <- Y - fitted(fit_locfit)
+sigma2_locfit <- mean(residuals_locfit^2)
+print(paste0("The variance of local linear regression:", sigma2_locfit))
+
+se_locfit <- sqrt(sigma2_locfit)
+upper_locfit <- fitted(fit_locfit) + 1.96*se_locfit
+lower_locfit <- fitted(fit_locfit) - 1.96*se_locfit
+plot(X, Y, col = "black", pch = 20, cex = 1, main = "Local Regression")
+lines(X[order(X)], fitted(fit_locfit)[order(X)], col = "blue", lwd = 2)
+lines(X[order(X)], upper_locfit[order(X)], col = "red", lty = 2)
+lines(X[order(X)], lower_locfit[order(X)], col = "red", lty = 2)
+```
+
+
+
+
+
+
