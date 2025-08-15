@@ -1,0 +1,1 @@
+STA3007 Nonparametric Statistics is an elective for student major in statistics at CUHK, Shenzhen. The course introduces nonparametric method for smoothing, testing, regression and Bayesian nonparametirc methods.
